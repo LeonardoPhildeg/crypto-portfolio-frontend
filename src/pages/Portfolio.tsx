@@ -1,21 +1,25 @@
-import { useEffect, useState, useRef } from 'react';
-import { api } from '../services/api';
+import { useEffect, useRef, useState } from 'react';
 import AllocationChart from '../components/AllocationChart';
 import CardMetric from '../components/CardMetric';
-import TabelaPortfolio from '../components/TabelaPortfolio';
-import ModalTransacao from '../components/ModalTransacao';
 import GraficoEvolucao from '../components/GraficoEvolucao';
-import { Ativo } from '../types';
+import ModalTransacao from '../components/ModalTransacao';
+import TabelaPortfolio from '../components/TabelaPortfolio';
+import { api } from '../services/api';
+import { PortfolioData } from '../types';
 import { tokenIcons } from '../utils/tokenIcons';
 
 export default function Portfolio() {
-  const [ativos, setAtivos] = useState<Ativo[]>([]);
+  const [portfolio, setPortfolio] = useState<PortfolioData>({
+    data: [],
+    totais: {
+      valorInvestido: '0',
+      percentualLucroTotal: '0',
+      valorLucroTotal: '0',
+      valorAtualUsd: '0',
+      valorAtualBrl: '0',
+    },
+  });
   const [cotacaoDolar, setCotacaoDolar] = useState<string>('0');
-  const [valorInvestido, setValorInvestido] = useState<string>('0');
-  const [rentabilidadeTotal, setRentabilidadeTotal] = useState<{
-    valor: string;
-    percentual: string;
-  }>({ valor: '0', percentual: '0' });
   const [caixa, setCaixa] = useState<string>('0');
   const [modalAberto, setModalAberto] = useState<'aporte' | 'venda' | 'caixa' | null>(null);
 
@@ -28,27 +32,16 @@ export default function Portfolio() {
     async function carregarDados() {
       try {
         const resPortfolio = await api.get('/portfolio');
-        const ativos = resPortfolio.data.data;
-        setAtivos(ativos);
+        const portfolio = resPortfolio.data;
+        setPortfolio(portfolio);
+        console.log('Dados do portfólio carregados:', portfolio);
 
-        const investido = ativos.reduce((sum, ativo) => sum + ativo.investido, 0);
-        setValorInvestido(investido);
+        setCotacaoDolar(portfolio.cotacaoDolar);
 
-        const valorAtual = ativos.reduce((sum, ativo) => sum + ativo.currentValueUsd, 0);
-        setRentabilidadeTotal({
-          valor: Number(valorAtual) - Number(investido),
-          percentual: investido > 0 ? ((valorAtual - investido) / investido) * 100 : 0,
-        });
+        // console.log('Total carteira USD:', totalCarteiraUsd.toFixed(2));
 
         const resCaixa = await api.get('/cash');
         setCaixa(resCaixa.data.usdBalance);
-
-        // Usar API pública para cotação do dólar
-        const resDolar = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL').then(
-          r => r.json()
-        );
-        const valorDolar = parseFloat(resDolar.USDBRL?.bid ?? '0');
-        setCotacaoDolar(valorDolar);
       } catch (error) {
         console.error('Erro ao carregar dados do portfólio:', error);
       }
@@ -57,23 +50,17 @@ export default function Portfolio() {
     carregarDados();
   }, [modalAberto]);
 
-  const totalCarteiraUsd =
-    ativos.reduce((sum, ativo) => sum + Number(ativo.currentValueUsd), 0) + caixa;
+  const formatCurrency = (valor: string, currency: string) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(Number(valor));
 
-  const formatUSD = (valor: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'USD' }).format(valor);
-  const formatBRL = (valor: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
-
-  // console.log('Total carteira USD:', totalCarteiraUsd.toFixed(2));
   return (
     <div className="p-6 text-white">
       <div className="flex justify-between items-start mb-4">
         <div>
           <h1 className="text-3xl font-bold">Total Balance</h1>
-          <h2 className="text-4xl font-semibold mt-2">{formatUSD(totalCarteiraUsd)}</h2>
+          <h2 className="text-4xl font-semibold mt-2">{`${formatCurrency(portfolio.totais.valorAtualUsd, 'USD')}`}</h2>
           {
-            <div className="text-xm text-gray-400">{`≈ ${formatBRL(totalCarteiraUsd * cotacaoDolar)}`}</div>
+            <div className="text-xm text-gray-400">{`≈ ${formatCurrency(portfolio.totais.valorAtualBrl, 'BRL')}`}</div>
           }
         </div>
 
@@ -102,31 +89,36 @@ export default function Portfolio() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <CardMetric
           title="Total Profitability"
-          value={formatUSD(rentabilidadeTotal.valor)}
-          subtitle={`${rentabilidadeTotal.percentual.toFixed(2)}%`}
-          positive={rentabilidadeTotal.valor >= 0}
+          value={formatCurrency(portfolio.totais.valorAtualUsd, 'USD')}
+          subtitle={`${portfolio.totais.percentualLucroTotal}%`}
+          positive={Number(portfolio.totais.percentualLucroTotal) >= 0}
         />
         <CardMetric
           title="Amount Invested"
-          value={formatUSD(valorInvestido)}
-          subtitle={`≈ ${formatBRL(valorInvestido * cotacaoDolar)}`}
+          value={formatCurrency(portfolio.totais.valorInvestido, 'USD')}
+          subtitle={`≈ ${formatCurrency(String(Number(portfolio.totais.valorInvestido) * Number(cotacaoDolar)), 'BRL')}`}
           positive
         />
-        <CardMetric title="Dollar Quote" value={formatBRL(cotacaoDolar)} subtitle="" positive />
+        <CardMetric
+          title="Dollar Quote"
+          value={formatCurrency(cotacaoDolar, 'BRL')}
+          subtitle=""
+          positive
+        />
         <CardMetric
           title="Cash"
-          value={formatUSD(caixa)}
+          value={formatCurrency(caixa, 'USD')}
           subtitle="Available cash in USD"
           positive
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <AllocationChart ativos={ativos} caixa={caixa} />
+        <AllocationChart portfolio={portfolio} caixa={caixa} />
         <GraficoEvolucao />
       </div>
 
-      <TabelaPortfolio ativos={ativos} />
+      <TabelaPortfolio ativos={portfolio.data} />
 
       {modalAberto && (
         <ModalTransacao

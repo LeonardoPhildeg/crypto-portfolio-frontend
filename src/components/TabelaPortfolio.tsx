@@ -6,7 +6,7 @@ interface Props {
 }
 
 export default function TabelaPortfolio({ ativos }: Props) {
-  const ativosFiltrados = ativos.filter(a => a.symbol !== 'USD');
+  // const ativosFiltrados = ativos.filter(a => a.symbol !== 'USD');
 
   return (
     <div className="mt-6 overflow-x-auto rounded-xl shadow bg-zinc-900 p-4">
@@ -22,7 +22,7 @@ export default function TabelaPortfolio({ ativos }: Props) {
           </tr>
         </thead>
         <tbody>
-          {ativosFiltrados.map(ativo => (
+          {ativos.map(ativo => (
             <tr key={ativo.symbol} className="border-t border-gray-800 hover:bg-zinc-800/50">
               <td className="py-2 px-2">
                 <div className="flex items-center gap-2">

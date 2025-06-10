@@ -1,41 +1,46 @@
-import { Ativo } from "../types";
-import { Pie } from "react-chartjs-2";
-import { Chart, ArcElement, Tooltip, Legend } from "chart.js";
+import { ArcElement, Chart, Legend, Tooltip } from 'chart.js';
+import { Pie } from 'react-chartjs-2';
+import { PortfolioData } from '../types';
 
 Chart.register(ArcElement, Tooltip, Legend);
 
 interface Props {
-  ativos: Ativo[];
-  caixa: number
+  portfolio: PortfolioData;
+  caixa: string;
 }
 
-export default function AllocationChart({ ativos, caixa }: Props) {
-
-  const ativosFiltrados = ativos.filter((a) => a.symbol !== "USD");
-
-  const total = ativosFiltrados.reduce((sum, a) => sum + a.currentValueUsd, 0) + caixa;
+export default function AllocationChart({ portfolio, caixa }: Props) {
+  const total = Number(portfolio.totais.valorAtualUsd) + Number(caixa);
 
   const dadosOrdenados = [
-    ...ativosFiltrados.map(a => ({
+    ...portfolio.data.map(a => ({
       label: a.symbol,
-      value: a.currentValueUsd
+      value: a.currentValueUsd,
     })),
-    { label: "Cash", value: caixa }
-  ].sort((a, b) => b.value - a.value);
+    { label: 'Cash', value: caixa },
+  ].sort((a, b) => Number(b.value) - Number(a.value));
 
   const data = {
     labels: dadosOrdenados.map(item => {
-      const percentual = ((item.value / total) * 100).toFixed(2);
+      const percentual = ((Number(item.value) / total) * 100).toFixed(2);
       return `${item.label} (${percentual}%)`;
     }),
     datasets: [
       {
         data: dadosOrdenados.map(item => item.value),
         backgroundColor: [
-          "#4ade80", "#60a5fa", "#facc15", "#f87171", "#c084fc", "#34d399", "#f472b6", "#fbbf24", "#a3e635"
+          '#4ade80',
+          '#60a5fa',
+          '#facc15',
+          '#f87171',
+          '#c084fc',
+          '#34d399',
+          '#f472b6',
+          '#fbbf24',
+          '#a3e635',
         ],
         borderWidth: 1,
-        borderColor: "#1e293b"
+        borderColor: '#1e293b',
       },
     ],
   };
@@ -44,9 +49,9 @@ export default function AllocationChart({ ativos, caixa }: Props) {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: "right" as const,
+        position: 'right' as const,
         labels: {
-          color: "#ccc",
+          color: '#ccc',
           font: { size: 12 },
         },
       },
@@ -54,7 +59,7 @@ export default function AllocationChart({ ativos, caixa }: Props) {
         callbacks: {
           label: function (context: any) {
             const value = context.raw;
-            return `${context.label}: $${value.toFixed(2)}`;
+            return `${context.label}: $${value}`;
           },
         },
       },

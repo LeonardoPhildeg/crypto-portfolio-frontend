@@ -12,3 +12,14 @@ export interface Ativo {
   investidoTotal: string;
   valorRentabilidadeTotal: string;
 }
+
+export interface PortfolioData {
+  data: Ativo[];
+  totais: {
+    valorInvestido: string;
+    percentualLucroTotal: string;
+    valorLucroTotal: string;
+    valorAtualUsd: string;
+    valorAtualBrl: string;
+  };
+}
